@@ -2,108 +2,126 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-class SpectralWidth(object):
-    def __init__(self, name, model):
+class WidthCalculator(object):
+    def __init__(self, results):
+        """
+        
+        Calculates the spectral width of a model based of the papers...
 
-        self._name = name
+        :param name: model name
+        :param model: 3ML likelihood model
+        """
 
-        self._model = model
+        self._model = results.optimized_model
+        
+   
+        # Gather the parameter variates
+
+        arguments = {}
+
+        for par in self._model.parameters.values():
+
+            if par.free:
+
+                this_name = par.name
+
+                this_variate = results.get_variates(par.path)
+
+                # Do not use more than 1000 values (would make computation too slow for nothing)
+
+                if len(this_variate) > 1000:
+
+                    this_variate = np.random.choice(this_variate, size=1000)
+
+                arguments[this_name] = this_variate
+
+        # Prepare the error propagator function
+
+
+        # energy range to calculate the width over
 
         self._energy_range = np.logspace(np.log10(8.), np.log10(40000.), 1E5)
 
-        self._function = self._model.point_sources[self._name].spectrum.main
+        # get the point source flux (only one source)
+        
+        self._function = results.propagate(self._model.point_sources[self._model.get_point_source_name(0)].spectrum.main.shape.evaluate_at, **arguments)
 
-        try:
+        # the vFv spectrum of the model
 
-            self._alpha = self._model.point_sources[
-                self._name].spectrum.main.Band.alpha.value
+        self._vfv_spectrum = self._energy_range**2 * self._model.get_point_source_fluxes(0,self._energy_range)
 
-            self._beta = self._model.point_sources[
-                self._name].spectrum.main.Band.beta.value
+        self._calculate_width_axelsson()
+        self._calculate_width_yu()
+        
 
-            self._xp = self._model.point_sources[
-                self._name].spectrum.main.Band.xp.value
+    def _calculate_width_axelsson(self):
 
-            self._spectral_difference = self._alpha - self._beta
 
-            self._is_band = True
+        max_flux = self._vfv_spectrum.max()
+        idx_max = self._vfv_spectrum.argmax()
+        half_max = 0.5 * max_flux
 
-        except:
+        idx1 = abs(self._vfv_spectrum[:idx_max] -
+                         half_max).argmin()
+        idx2 = abs(self._vfv_spectrum[idx_max:] -
+                         half_max).argmin() + idx_max
 
-            self._is_band = False
+        e1 = self._energy_range[idx1]
+        e2 = self._energy_range[idx2]
 
-        self._vfv_spectrum = self._energy_range**2 * self._function(
-            self._energy_range)
+        self._width = np.log10(e2 / e1)
 
-        self._calculate_width()
 
-    def _calculate_width(self):
+    def _calculate_width_yu(self):
 
+        max_flux = self._vfv_spectrum.max()
+        idx_max = self._vfv_spectrum.argmax()
+        
+        ep = self._energy_range[idx_max]
+
+        
+        e_left   = ep * .1
+        e_right =  ep * 3.
+
+        vFv_left = e_left**2 * self._function(e_left)
+
+        vFv_right = e_right**2 * self._function(e_right)
+
+        x_left = np.log(e_left / ep)
+        y_left = np.log(vFv_left / max_flux)
+
+        x_right = np.log(e_right / ep)
+        y_right = np.log(vFv_right / max_flux)
+
+        d2 = (x_right - x_left)**2 + (y_right - y_left)**2
+        a2 = (np.log(1) - x_left)**2 + (np.log(1)-y_left)**2
+        b2 = (np.log(1) - x_right)**2 + (np.log(1)-y_right)**2
+        
+      
+
+        arg = -((d2 - a2 - b2)/(2. * np.sqrt(a2)* np.sqrt(b2)))
+        
+       
+        angle = np.arccos(arg)
+
+        self._angle = np.rad2deg(angle)
+        
+        
         #fig, ax = plt.subplots()
+        
+        
+        #ax.plot(np.log(self._energy_range/ep),np.log(self._vfv_spectrum/max_flux))
+        #ax.plot([x_left,x_right,np.log(1.),x_left],[y_left,y_right,np.log(1.),y_left],'-')
 
-        self._max = self._vfv_spectrum.max()
-        self._idx_max = self._vfv_spectrum.argmax()
-        self._half_max = 0.5 * self._max
-
-        self._idx1 = abs(self._vfv_spectrum[:self._idx_max] -
-                         self._half_max).argmin()
-        self._idx2 = abs(self._vfv_spectrum[self._idx_max:] -
-                         self._half_max).argmin() + self._idx_max
-
-        self._e1 = self._energy_range[self._idx1]
-        self._e2 = self._energy_range[self._idx2]
-
-        self._width = np.log10(self._e2 / self._e1)
-
-    def display_width(self):
-
-        fig, ax = plt.subplots()
-
-        ax.loglog(self._energy_range, self._vfv_spectrum)
-        ax.vlines(
-            self._energy_range[self._idx_max],
-            self._half_max,
-            self._max,
-            linestyles="--")
-
-        ax.hlines(
-            self._half_max,
-            self._energy_range[self._idx1],
-            self._energy_range[self._idx2],
-            colors='r')
-
-        ax.set_xlabel(r'Energy [keV]')
-
-        ax.set_ylabel(r'$\nu F_{\nu}$')
-
-    @property
-    def name(self):
-
-        return self._name
-
+ 
     @property
     def width(self):
 
         return self._width
 
     @property
-    def spectral_difference(self):
+    def angle(self):
 
-        if self._is_band:
+        return self._angle
 
-            return self._spectral_difference
-
-    @property
-    def alpha(self):
-
-        return self._alpha
-
-    @property
-    def beta(self):
-
-        return self._beta
-
-    @property
-    def xp(self):
-
-        return self._xp
+  
