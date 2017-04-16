@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 
 class WidthCalculator(object):
-    def __init__(self, results):
+    def __init__(self, results, with_errors=False):
         """
         
         Calculates the spectral width of a model based of the papers...
@@ -14,7 +14,8 @@ class WidthCalculator(object):
 
         self._model = results.optimized_model
         
-   
+        self._with_errors = with_errors
+        
         # Gather the parameter variates
 
         arguments = {}
@@ -43,9 +44,13 @@ class WidthCalculator(object):
         self._energy_range = np.logspace(np.log10(8.), np.log10(40000.), 1E5)
 
         # get the point source flux (only one source)
-        
-        self._function = results.propagate(self._model.point_sources[self._model.get_point_source_name(0)].spectrum.main.shape.evaluate_at, **arguments)
+        if with_errors:
+            self._function = results.propagate(self._model.point_sources[self._model.get_point_source_name(0)].spectrum.main.shape.evaluate_at, **arguments)
 
+        else:
+
+            self._function = lambda ee: self._model.get_point_source_fluxes(0,ee)
+            
         # the vFv spectrum of the model
 
         self._vfv_spectrum = self._energy_range**2 * self._model.get_point_source_fluxes(0,self._energy_range)
