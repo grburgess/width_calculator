@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 
 class WidthCalculator(object):
-    def __init__(self, results, with_errors=False):
+    def __init__(self,model=None, results=None, with_errors=False):
         """
         
         Calculates the spectral width of a model based of the papers...
@@ -12,36 +12,45 @@ class WidthCalculator(object):
         :param model: 3ML likelihood model
         """
 
-        self._model = results.optimized_model
+        if model is None:
         
+            self._model = results.optimized_model
+
+        elif model is not None:
+
+            self._model = model
+            
+            
         self._with_errors = with_errors
         
-        # Gather the parameter variates
 
-        arguments = {}
+        if with_errors:
+            # Gather the parameter variates
 
-        for par in self._model.parameters.values():
+            arguments = {}
 
-            if par.free:
+            for par in self._model.parameters.values():
 
-                this_name = par.name
+                if par.free:
 
-                this_variate = results.get_variates(par.path)
+                    this_name = par.name
 
-                # Do not use more than 1000 values (would make computation too slow for nothing)
+                    this_variate = results.get_variates(par.path)
 
-                if len(this_variate) > 1000:
+                    # Do not use more than 1000 values (would make computation too slow for nothing)
 
-                    this_variate = np.random.choice(this_variate, size=1000)
+                    if len(this_variate) > 1000:
 
-                arguments[this_name] = this_variate
+                        this_variate = np.random.choice(this_variate, size=1000)
 
-        # Prepare the error propagator function
+                    arguments[this_name] = this_variate
+
+            # Prepare the error propagator function
 
 
         # energy range to calculate the width over
 
-        self._energy_range = np.logspace(np.log10(8.), np.log10(40000.), 1E5)
+        self._energy_range = np.logspace(np.log10(8.), np.log10(40000.), 1E3)
 
         # get the point source flux (only one source)
         if with_errors:
@@ -49,11 +58,11 @@ class WidthCalculator(object):
 
         else:
 
-            self._function = lambda ee: self._model.get_point_source_fluxes(0,ee)
+            self._function = lambda ee: self._model.get_point_source_flux(0,ee)
             
         # the vFv spectrum of the model
 
-        self._vfv_spectrum = self._energy_range**2 * self._model.get_point_source_fluxes(0,self._energy_range)
+        self._vfv_spectrum = self._energy_range**2 * self._model.get_point_source_flux(0,self._energy_range)
 
         self._calculate_width_axelsson()
         self._calculate_width_yu()
