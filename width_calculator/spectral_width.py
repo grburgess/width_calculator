@@ -58,11 +58,11 @@ class WidthCalculator(object):
 
         else:
 
-            self._function = lambda ee: self._model.get_point_source_flux(0,ee)
+            self._function = lambda ee: self._model.get_point_source_fluxes(0,ee)
             
         # the vFv spectrum of the model
 
-        self._vfv_spectrum = self._energy_range**2 * self._model.get_point_source_flux(0,self._energy_range)
+        self._vfv_spectrum = self._energy_range**2 * self._model.get_point_source_fluxes(0,self._energy_range)
 
         self._calculate_width_axelsson()
         self._calculate_width_yu()
