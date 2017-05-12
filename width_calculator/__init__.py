@@ -1,4 +1,4 @@
-from spectral_width import WidthCalculator
+from width_calculator import WidthCalculator
 
 
 __all__ = ['WidthCalculator']
