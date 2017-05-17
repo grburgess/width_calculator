@@ -33,7 +33,8 @@ wc.width
 
 ## Citing
 
-If you find this code useful in your research, please consider citing the authors of the original work linked above as well as 
+If you find this code useful in your research, please consider citing the authors of the original work linked above as well as
+[Burgess 2017](https://arxiv.org/abs/1705.05718)
 
 
 
