@@ -1,4 +1,4 @@
-from distutils.core import setup
+from 
 
 setup(
     name='width_calculator',
