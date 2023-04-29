@@ -1,4 +1,4 @@
-from 
+from setuptools import setup
 
 setup(
     name='width_calculator',
